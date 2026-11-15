@@ -1,194 +1,70 @@
-## Correlation entre revenus et résultats 
+# Does household income line up with baccalauréat results? France, 2012–2019
 
-<h1> Introduction </h1>
- <br/>
- 
-<p> La question de l’égalité des chances se pose depuis déjà un bon moment au sein de l’éducation nationale, le second principe de la devise de notre République, prônant l’égalité des chances (ou des résultats) au sein d’enfants issues de strates sociales différentes. L’éducation nationale s’attelle déjà à cette tâche depuis des années maintenant, mais quelles en sont les résultats ?
-Ce projet a pour but d'analyser les résultats au baccalauréat des récentes années. (2012-2018)  </p>
+**Question:** do baccalauréat results in France vary with the average income of the département where students sit their exams?
 
-<h1> Préparation des données </h1>
+This is a statistical study written in R. It joins French lycée baccalauréat results (2012–2019) to average monthly income per département, then compares the two with maps and correlations. The original analysis is in French and is kept in [ANALYSE_FR.md](ANALYSE_FR.md).
 
-<p> Dans ce projet, nous avons étudié les données des BACs de 2012 à 2019 en cherchant à les relier aux revenus des foyers ainsi qu'à leur niveau.
+## Maps
 
-Chargement des librairies utile à notre étude.
-```{r Chargement des librairies, message=FALSE, warning=FALSE, include=TRUE}
-library(corrplot)
-library(zoom)
-library(gplots)
-library(psy)
-library(FactoMineR)
-library(prettyR)
-```
+The two maps below cover the same départements: the baccalauréat mention rate (taux de mention) on the left, and average monthly income on the right.
 
-Chargement du jeu de donnée des résultats aux BACs de 2012 à 2019 issue de l'INSEE (voir source)
-```{r ouverture du jeu de donnée du bac}
-donnee.bac <- read.csv2("fr-en-indicateurs-de-resultat-des-lycees-denseignement-general-et-technologique.csv") 
-```
-Nous avons utilisé un jeu de donnée proposé par l’INSEE sur les BAC de 2012 à 2019, 2019 compris, mais pas complet, car les épreuves n’avaient pas encore eu lieu à l’époque. (voir SOURCE)
-
-
-Chargement du jeu de donnée des revenus par départements issue  journal du net (voir source)
-```{r ouverture du jeu des revenus par département}
-code.et.revenu <- read.csv("code et revenu.csv")
-```
-Les revenus moyen par département on été récupéré par nos soins via les données de journal du net et mis en page pour nous faciliter leur utilisation. (voir SOURCE)
-
-
-
-Stockage du revenu par département dans le fichier principal : donnee.bac
-```{r stockage revenu derniere ligne, echo=TRUE, message=FALSE, warning=FALSE, paged.print=TRUE}
-if(!("revenu" %in% colnames(donnee.bac))){ #on vérifie que la colonne 
-                                           #n'existe pas déjà dans le dataframe
-donnee.bac$revenu <- rep(NA,16210)
-i<-0
-ii<-0
-
-for(i in seq(1,16210,1))
-{
-  for(ii in seq(1,101,1))
-  {
-    if(is.na(donnee.bac$revenu[i]) & donnee.bac$Code.dÃ.partement[i]==code.et.revenu$Code[ii]){
-      
-      donnee.bac$revenu[i]<-code.et.revenu$revenu[ii]
-    }
-  }
-}
-
-write.csv2(donnee.bac, 
-           "fr-en-indicateurs-de-resultat-des-lycees-denseignement-general-et-technologique.csv",
-           row.names = FALSE, col.names = TRUE)
-}
-```
-
-Stockage du revenu par département dans un data frame secondaire avec taux de mentions des séries générales : code.et.revenu.ex
-```{r stockage revenu et  taux de mentions des séries générales, echo=TRUE, message=FALSE, warning=FALSE, paged.print=TRUE}
-revenu <- read.csv2("revenu.et.taux.csv")
-if(is.na(donnee.bac$revenu))
-  {
-revenu<-data.frame(departement=levels(donnee.bac$DÃ.partement),revenu=rep(0,101),mentionS=rep(0,101),mentionES=rep(0,101),mentionL=rep(0,101))
-revenu$revenu<-c(2433,1825,1800,1887,2233,1880,1793,1689,1975,1710,1872,2254,2092,2047,1769,1887,1996,1903,1894,1965,2185,1982,1631,1952,1789,2194,1985,2531,2064,2150,2041,1878,1839,2150,1389,1424,2380,1780,2272,1846,1815,1848,2805,1924,1940,1802,3349,1942,2166,1805,2121,2243,2031,1976,2045,1958,2218,2161,1870,1802,1764,2025,1942,2213,1499,1992,789,2051,1851,2055,2053,1793,1934,2156,1825,3417,1779,2057,2110,1756,1458,2375,1966,1981,2216,2370,2022,1760,1895,1870,1801,2094,2449,2288,2106,1887,2020,1961,1836,1934,3178)
-
-
-#on regarde les moyennes par departement 
-total<-rep(0,101)
-tot<-rep(0,101)
-for(i in seq(1,16210,1)){
-  for(ii in seq(1,101,1)){
-    if(revenu$departement[ii] == donnee.bac$DÃ.partement[i] & !is.na(revenu$departement[ii]) & !is.na(donnee.bac$Taux_Mention_brut_serie_S[i])){
-      total[ii]=total[ii]+donnee.bac$Taux_Mention_brut_serie_S[i]*donnee.bac$Effectif.PrÃ.sents.sÃ.rie.S[i]/100
-      tot[ii]=tot[ii]+donnee.bac$Effectif.PrÃ.sents.sÃ.rie.S[i]
-    }
-  }
-}
-#calcul du taux de mentions par département en S
-revenu$mentionS=total/tot
-
-total<-rep(0,101)
-tot<-rep(0,101)
-for(i in seq(1,16210,1)){
-  for(ii in seq(1,101,1)){
-    if(revenu$departement[ii] == donnee.bac$DÃ.partement[i] & !is.na(revenu$departement[ii]) & !is.na(donnee.bac$Taux_Mention_brut_serie_ES[i] )){
-      total[ii]=total[ii]+donnee.bac$Taux_Mention_brut_serie_ES[i]*donnee.bac$Effectif.PrÃ.sents.sÃ.rie.ES[i]/100
-      tot[ii]=tot[ii]+donnee.bac$Effectif.PrÃ.sents.sÃ.rie.ES[i]
-    }
-    
-  }
-  
-  
-}
-#calcul du taux de mentions par département en ES
-revenu$mentionES=total/tot
-
-total<-rep(0,101)
-tot<-rep(0,101)
-for(i in seq(1,16210,1)){
-  for(ii in seq(1,101,1)){
-    if(revenu$departement[ii] == donnee.bac$DÃ.partement[i] & !is.na(revenu$departement[ii]) & !is.na(donnee.bac$Taux_Mention_brut_serie_L[i] )){
-      total[ii]=total[ii]+donnee.bac$Taux_Mention_brut_serie_L[i]*donnee.bac$Effectif.PrÃ.sents.sÃ.rie.L[i]/100
-      tot[ii]=tot[ii]+donnee.bac$Effectif.PrÃ.sents.sÃ.rie.L[i]
-    }
-    
-  }
-  
-  
-}
-#calcul du taux de mentions par département en L
-revenu$mentionL=total/tot
-
-donnee.bac$revenu<-rep(0,16210)
-donnee.bac$numero<-c()
-i<-0
-ii<-0
-for(i in seq(1,16210,1)){
-  for(ii in seq(1,101,1)){
-    if(donnee.bac$DÃ.partement[i]==revenu$departement[ii]){
-      donnee.bac$revenu[i]<-revenu$revenu[ii]
-    }
-  }
-} 
-}
-```
-
-La partie cartographique a elle été réalisé essentiellement à l’aide de l’outil proposé par l’INSEE pour effectuer de la cartographies à différentes échelles au niveau de la France et de ses DOM-TOM, en lui soumettant des données classé selon l’échelle choisie :  régional, départementale...
-</p>
- <br/>
- 
-<h1> Education: différences et similarité globales  </h1> 
- <br/>
-
-
-<p>Notre beau territoire, modeste mais suffisamment  vaste pour observer des différences spatiale. </p>
-
-<img src = "map par anamorphose des effectifs présent en terminal.png" title = "map par anamorphose des effectifs present en terminal" alt = "carte effectif présent">
-
-carte par anamorphose des effectifs par departement
-
-<p> Une carte par anamorphose est plus parlante que de simple gradient de couleurs quand on veut comparer des différence de taille. </p>
-
-
-### Par Département
-
-Taux de mentions par Départemenent en série générale
-
-```{r taux mention dept, echo=FALSE}
-
-plot(donnee.bac$Taux_Mention_brut_serie_S~donnee.bac$LibellÃ..dÃ.partement,xlab=NA, ylab = "taux de mention brut série S" ,notch =FALSE, horizontal = FALSE,cex.axis=0.4, las=2, col=4,)
-
-plot(donnee.bac$Taux_Mention_brut_serie_ES~donnee.bac$LibellÃ..dÃ.partement,xlab=NA, ylab = "taux de mention brut série ES" ,notch =FALSE, horizontal = FALSE,cex.axis=0.4, las=2, col=3)
-
-plot(donnee.bac$Taux_Mention_brut_serie_L~donnee.bac$LibellÃ..dÃ.partement,xlab=NA, ylab = "taux de mention brut série L" ,notch =FALSE, horizontal = FALSE,cex.axis=0.4, las=2, col=2)
-```
-
-
-Pour ce qui est des département, les cartes sont plus efficaces pour donner une vue d'ensemble des disparité.
-
-
-## {-}
-
-Des box plots, ont été utilisées pour pouvoir comparer à la fois les niveaux moyens(médian) et le degré auquel varie le niveau au sein d’une académie 
-
-<br/>
-<p>
-<img src = "map revenu mensuel dept.png" 
-  title = "map revenu mensuel par dept" 
-  alt = "revenu mensuel"
-  />
-  
-  carte revenu mensuel par departement
-  
-  <br/>
-  
-<img src = "map taux de mention.png"
- title = "map taux de mention par dept" 
- alt = "taux de mentions"
- />
- 
-  carte taux de mentions par departement 
- 
-  <br/>
+<p align="center">
+  <img src="docs/images/taux-mentions-par-departement.webp" alt="Map of baccalauréat mention rates by département, series S" width="48%">
+  <img src="docs/images/revenu-mensuel-par-departement.webp" alt="Map of average monthly income by département" width="48%">
 </p>
 
-<br/>
+<p align="center">
+  <img src="docs/images/effectifs-terminale-anamorphose.webp" alt="Cartogram of the number of students in final year (terminale) by département" width="70%">
+</p>
 
-<p>
-Des cartes avec gradients de couleurs ont été utilisé d’une part parce qu'une carte est utile pour représenter des données dans l’espace et d’autre parce que l’anamorphose n’aurait pas beaucoup de sens étant donnée que l’on parle de revenue par personne et d’un ratio (taux de mention) </p>
+The cartogram sizes each département by its number of students in final year, which makes large-population areas (Paris, Lyon, Marseille) visible. The gradient maps are better for comparing rates and averages.
+
+## Key findings
+
+The repository does not yet state a conclusion. What it establishes:
+
+- **Scope:** results from 2012 to 2019 for general and technological lycées, using the education-ministry indicators on data.gouv.fr. The 2019 data is incomplete because the exams had not yet taken place when the dataset was compiled.
+- **Income link:** each lycée's département is matched to its average monthly income, so results can be compared across regions.
+- **Correlations:** `scriptprojetbac.R` computes Pearson correlations between départemental income and mention rates for eight baccalauréat series. The coefficients are not reported in the README, so no effect size is claimed here.
+- **Spatial disparities:** the author observes that results and income differ noticeably from one département to another, and uses maps to show this.
+
+If you are reading this for a conclusion, see the open question under "Status".
+
+## Tech stack
+
+- **R** for the whole pipeline (`scriptprojetbac.R`)
+- **R packages:** `corrplot`, `FactoMineR`, `psy`, `prettyR`, `gplots`, `zoom`, `ggplot2`
+- **Maps:** produced with the INSEE cartography tool, basemap © IGN / INSEE 2020
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `scriptprojetbac.R` | Data cleaning, per-département income and mention rates, correlations, plots |
+| `ANALYSE_FR.md` | Original French analysis (R Markdown export) |
+| `projet_bac.csv` | Lycée results extract used in the study |
+| `code et revenu et taux mention.csv` | Département codes, income, mention rate and headcount |
+| `code.revenu.median.csv`, `Varmod_RP19682016.csv` | Additional income and variable tables |
+| `docs/images/` | Charts used in this README (WebP) |
+| `*.png` (root) | Original map exports |
+
+## Getting started
+
+1. Clone the repository and open `EAVD.Rproj` in RStudio, or set your working directory to the repository root.
+2. Install the R packages listed above.
+3. Run `scriptprojetbac.R`.
+
+Note: the script reads a file named `fr-en-indicateurs-de-resultat-des-lycees-denseignement-general-et-technologique.csv` and `code et revenu.csv`. Neither name matches a file in the repository (`projet_bac.csv` and `code et revenu et taux mention.csv` are the included equivalents), so the paths need adjusting before the script runs end to end. I have not re-run the R code for this refresh.
+
+## Status
+
+Exploratory study, with no written conclusion yet. Open items:
+
+- Report the correlation coefficients and their significance, and state a conclusion.
+- Align the file names in the script with the files in the repository.
+- The introduction of the French analysis says 2012–2018, while the data covers 2012–2019.
+
+## Data sources
+
+- Baccalauréat results: education-ministry indicators on data.gouv.fr (cited as INSEE in the original analysis).
+- Average monthly income per département: Journal du Net (as cited in the original analysis).
